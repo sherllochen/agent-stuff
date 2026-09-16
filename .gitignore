@@ -4,3 +4,6 @@
 # always keep .gitkeep and .keep files
 !.gitkeep
 !.keep
+
+# generated combined global and repository instructions
+.generated/
