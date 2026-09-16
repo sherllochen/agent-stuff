@@ -1,0 +1,6 @@
+# OSX cross-platform file metadata store
+.DS_Store
+
+# always keep .gitkeep and .keep files
+!.gitkeep
+!.keep
