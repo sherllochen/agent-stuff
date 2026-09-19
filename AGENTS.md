@@ -14,5 +14,6 @@ This file defines repository-wide working rules for AI coding agents operating i
 
 ## Notes
 
-- `AGENTS.md` is the shared, repository-level instruction file intended for cross-agent compatibility.
+- `AGENTS.md` is the shared, repository-level instruction file intended for cross-agent compatibility across Cursor, Claude Code, and GitHub Copilot.
+- This repository's installer also publishes harness-native adapters (`CLAUDE.md`, `.github/copilot-instructions.md`) and mirrors skills into each tool's discovery paths.
 - Compliance still depends on whether a given tool supports and loads repository instruction files.
