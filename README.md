@@ -55,7 +55,7 @@ The installer:
 - Removes stale links that point into this repository.
 - Leaves unrelated and third-party skills untouched.
 
-A configured project must already exist under `~/dev`. The installer stops with an error when its corresponding repository is missing.
+A configured project should already exist under `~/dev`. If its corresponding repository is missing, the installer prints a skip message and continues with the remaining projects.
 
 ### Run From Anywhere
 

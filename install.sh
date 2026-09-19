@@ -218,15 +218,6 @@ done
   exit 1
 }
 
-for project_source in "${project_sources[@]}"; do
-  project_name=$(basename "$project_source")
-  project_destination="$dev_root/$project_name"
-  if [[ ! -d "$project_destination" ]]; then
-    echo "Repository directory does not exist: $project_destination" >&2
-    exit 1
-  fi
-done
-
 mkdir -p "$generated_root"
 for destination in "${global_skill_destinations[@]}"; do
   mkdir -p "$destination"
@@ -258,6 +249,11 @@ done
 for project_source in "${project_sources[@]}"; do
   project_name=$(basename "$project_source")
   project_destination="$dev_root/$project_name"
+  if [[ ! -d "$project_destination" ]]; then
+    echo "Skipping $project_name: repository directory does not exist: $project_destination" >&2
+    continue
+  fi
+
   project_skills_source="$project_source/.agents/skills"
   generated_directory="$generated_root/$project_name"
   generated_agents="$generated_directory/AGENTS.md"

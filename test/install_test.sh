@@ -165,13 +165,15 @@ test "$(grep -Fc '# BEGIN agent-stuff managed exclusions' \
   "$dev_root/project-a/.git/info/exclude")" -eq 1
 
 mkdir -p "$source_root/missing-project/.agents/skills"
-if HOME="$home_root" DEV_ROOT="$dev_root" LN_COMMAND="$ln_command" \
+HOME="$home_root" DEV_ROOT="$dev_root" LN_COMMAND="$ln_command" \
   "$source_root/install.sh" \
-  > "$sandbox/missing.out" 2>&1; then
-  echo 'Expected missing repository validation to fail' >&2
-  exit 1
-fi
-grep -F "Repository directory does not exist: $dev_root/missing-project" \
+  > "$sandbox/missing.out" 2>&1
+grep -F "Skipping missing-project: repository directory does not exist: $dev_root/missing-project" \
   "$sandbox/missing.out"
+test "$(readlink "$dev_root/project-a/AGENTS.md")" = \
+  "$source_root/.generated/project-a/AGENTS.md"
+test "$(readlink "$dev_root/project-b/AGENTS.md")" = \
+  "$source_root/.generated/project-b/AGENTS.md"
+test ! -e "$dev_root/missing-project"
 
 echo 'Installer tests passed'
