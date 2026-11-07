@@ -1,0 +1,13 @@
+{
+  "name": "node-security-patching-tools",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.16.0",
+  "scripts": {
+    "preflight": "node preflight.mjs",
+    "test": "node preflight.mjs && node --test"
+  },
+  "dependencies": {
+    "semver": "7.8.5"
+  }
+}

@@ -43,6 +43,7 @@ mkdir -p \
   "$home_root/.claude/skills" \
   "$home_root/.cursor/skills" \
   "$home_root/.copilot/skills" \
+  "$home_root/.gemini/config/skills" \
   "$dev_root/project-a/.agents/skills/project-skill" \
   "$dev_root/project-a/.claude/skills" \
   "$dev_root/project-a/.git/info" \
@@ -64,6 +65,7 @@ touch "$dev_root/project-b/.git/info/exclude"
 
 make_link "$source_root/.agents/skills/removed-skill" "$home_root/.agents/skills/stale-skill"
 make_link "$source_root/.agents/skills/removed-skill" "$home_root/.claude/skills/stale-skill"
+make_link "$source_root/.agents/skills/removed-skill" "$home_root/.gemini/config/skills/stale-skill"
 make_link "$source_root/project-a/.agents/skills/removed-skill" \
   "$dev_root/project-a/.agents/skills/stale-skill"
 make_link "$source_root/project-a/.agents/skills/removed-skill" \
@@ -76,7 +78,8 @@ for global_destination in \
   "$home_root/.agents/skills/global-skill" \
   "$home_root/.claude/skills/global-skill" \
   "$home_root/.cursor/skills/global-skill" \
-  "$home_root/.copilot/skills/global-skill"; do
+  "$home_root/.copilot/skills/global-skill" \
+  "$home_root/.gemini/config/skills/global-skill"; do
   test "$(readlink "$global_destination")" = \
     "$source_root/.agents/skills/global-skill"
 done
@@ -95,6 +98,8 @@ test -L "$home_root/.agents/skills/unrelated-link"
 test ! -e "$home_root/.agents/skills/stale-skill"
 test ! -L "$home_root/.agents/skills/stale-skill"
 test ! -e "$home_root/.claude/skills/stale-skill"
+test ! -e "$home_root/.gemini/config/skills/stale-skill"
+test ! -L "$home_root/.gemini/config/skills/stale-skill"
 test ! -e "$dev_root/project-a/.agents/skills/stale-skill"
 test ! -L "$dev_root/project-a/.agents/skills/stale-skill"
 test ! -e "$dev_root/project-a/.claude/skills/stale-skill"

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_source_root() {
+  local target="${BASH_SOURCE[0]}"
+  while [[ -L "$target" ]]; do
+    local dir
+    dir=$(cd "$(dirname "$target")" && pwd)
+    target=$(readlink "$target")
+    [[ "$target" != /* ]] && target="$dir/$target"
+  done
+  cd "$(dirname "$target")" && pwd
+}
+
+source_root=$(resolve_source_root)
+installer_script="$source_root/install-custom-skills.sh"
+[[ -f "$installer_script" ]] || installer_script="$source_root/install.sh"
+
+sync_script="$source_root/global-sync.sh"
+[[ -f "$sync_script" ]] || sync_script="$source_root/adopt.sh"
+
+usage() {
+  cat <<'EOF'
+agent-stuff: Unified CLI for agent instructions and skills management.
+
+Usage:
+  agent-stuff <command> [arguments...]
+
+Commands:
+  install-custom-skills   Link skills and configure dev projects (~/dev/*)
+                          Aliases: install, install-custom
+  global-sync             Discover unmanaged skills across harnesses, adopt or
+                          delete them, and sync to all global agent harnesses
+                          Aliases: sync, adopt
+  list                    List all discovered skills and their management status
+  help, -h, --help        Show this help message
+
+Examples:
+  agent-stuff install-custom-skills      # Sync repo skills & configs to projects
+  agent-stuff global-sync                # Interactively review and sync unmanaged skills
+  agent-stuff global-sync --all          # Adopt all unmanaged skills non-interactively
+  agent-stuff global-sync --delete <foo> # Delete skill from all harnesses
+  agent-stuff list                       # Inspect current harness skill status
+EOF
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 0
+fi
+
+subcommand=$1
+shift
+
+case "$subcommand" in
+  install-custom-skills|install|install-custom)
+    exec "$installer_script" "$@"
+    ;;
+  global-sync|sync|adopt)
+    exec "$sync_script" "$@"
+    ;;
+  list|--list|-l)
+    exec "$sync_script" --list "$@"
+    ;;
+  help|-h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "agent-stuff: unknown command '$subcommand'" >&2
+    echo "Run 'agent-stuff --help' for available commands." >&2
+    exit 1
+    ;;
+esac
