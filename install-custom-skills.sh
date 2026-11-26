@@ -18,6 +18,8 @@ source_root=$(resolve_source_root)
 dev_root=${DEV_ROOT:-"$HOME/dev"}
 generated_root="$source_root/.generated"
 global_skills_source="$source_root/.agents/skills"
+reviewer_prompt_source="$global_skills_source/do-it/reviewer-prompt.md"
+do_it_config_source="$source_root/do-it.config"
 
 # Shared Agent Skills path plus native discovery paths for each harness.
 # Source of truth in this repo remains `.agents/skills/`.
@@ -65,6 +67,86 @@ replace_with_link() {
   rm -rf "$destination"
   create_link "$source" "$destination"
   printf 'Linked %s -> %s\n' "$destination" "$source"
+}
+
+# Git reads core.excludesFile for every repository; unset means the XDG default.
+global_git_excludes_file() {
+  local configured
+  configured=$(git config --global --type=path --get core.excludesFile 2>/dev/null || true)
+  if [[ -n "$configured" ]]; then
+    printf '%s\n' "$configured"
+  else
+    printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
+  fi
+}
+
+ensure_global_git_exclude() {
+  local pattern=$1 excludes_file
+
+  command -v git > /dev/null 2>&1 || return 0
+  excludes_file=$(global_git_excludes_file)
+  mkdir -p "$(dirname "$excludes_file")"
+  touch "$excludes_file"
+  grep -Fxq -- "$pattern" "$excludes_file" && return 0
+
+  if [[ -s "$excludes_file" && -n "$(tail -c 1 "$excludes_file")" ]]; then
+    printf '\n' >> "$excludes_file"
+  fi
+  printf '%s\n' "$pattern" >> "$excludes_file"
+  printf 'Added %s to global Git excludes %s\n' "$pattern" "$excludes_file"
+}
+
+write_claude_reviewer_agent() {
+  local destination=$1
+
+  {
+    cat <<'EOF'
+---
+name: do-it-reviewer
+description: Read-only reviewer for the do-it skill's review/debate loop. Invoke only from do-it.
+tools: Read, Grep, Glob, Bash, WebFetch
+disallowedTools: Write, Edit
+model: opus
+---
+
+EOF
+    cat "$reviewer_prompt_source"
+  } > "$destination"
+}
+
+# Succeeds (and warns) when destination exists but is not our link to source.
+is_unmanaged_destination() {
+  local source=$1
+  local destination=$2
+
+  if [[ -e "$destination" || -L "$destination" ]] \
+    && [[ "$(readlink "$destination" 2>/dev/null || true)" != "$source" ]]; then
+    echo "Skipping $destination: existing file is not managed by agent-stuff" >&2
+    return 0
+  fi
+  return 1
+}
+
+install_reviewer_agent() {
+  local generated_agent="$generated_root/agents/claude/do-it-reviewer.md"
+  local agent_link="$HOME/.claude/agents/do-it-reviewer.md"
+
+  [[ -f "$reviewer_prompt_source" ]] || return 0
+  is_unmanaged_destination "$generated_agent" "$agent_link" && return 0
+
+  mkdir -p "$(dirname "$generated_agent")"
+  write_claude_reviewer_agent "$generated_agent"
+  replace_with_link "$generated_agent" "$agent_link"
+}
+
+# The resolver reads this user-level file in every repo; the repo copy is the source of truth.
+install_do_it_config() {
+  local config_link="${XDG_CONFIG_HOME:-$HOME/.config}/do-it/config"
+
+  [[ -f "$do_it_config_source" ]] || return 0
+  is_unmanaged_destination "$do_it_config_source" "$config_link" && return 0
+
+  replace_with_link "$do_it_config_source" "$config_link"
 }
 
 remove_stale_links() {
@@ -236,6 +318,9 @@ for destination in "${global_skill_destinations[@]}"; do
   remove_stale_links "$destination"
 done
 link_skills "$global_skills_source" "${global_skill_destinations[@]}"
+install_reviewer_agent
+install_do_it_config
+ensure_global_git_exclude '.do-it/'
 
 for repository in "$dev_root"/*; do
   [[ -d "$repository" ]] || continue

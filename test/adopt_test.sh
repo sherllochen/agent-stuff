@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# The installer edits the global Git excludes file; keep it inside the sandbox HOME.
+unset XDG_CONFIG_HOME GIT_CONFIG_GLOBAL
+export GIT_CONFIG_NOSYSTEM=1
+
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 sandbox=$(mktemp -d)
 trap 'rm -rf "$sandbox"' EXIT

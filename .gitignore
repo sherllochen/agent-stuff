@@ -7,3 +7,7 @@
 
 # generated combined global and repository instructions
 .generated/
+
+# Skills here are the source of truth; override the global `.agents/skills/**/*.*`
+# rule that keeps installed skill links out of other repositories.
+!/.agents/skills/**

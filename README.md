@@ -31,6 +31,7 @@ agent-stuff/
 │   ├── .github/copilot-instructions.md  # Optional Copilot extras
 │   └── .agents/skills/<skill>/       # Project skills
 ├── agent-stuff                       # Unified CLI wrapper
+├── do-it.config                      # Reviewer model settings for do-it (linked to ~/.config/do-it/config)
 ├── install-custom-skills.sh          # Links skills & configures dev projects (symlink: install.sh)
 └── global-sync.sh                    # Discovers & syncs global skills (symlink: adopt.sh)
 ```
@@ -117,6 +118,9 @@ What it does:
 - Adds exact linked paths to each repository's local `.git/info/exclude`.
 - Removes stale links that point into this repository.
 - Leaves unrelated and third-party skills untouched.
+- Generates the read-only `do-it-reviewer` Claude Code agent from `.agents/skills/do-it/reviewer-prompt.md` and links it to `~/.claude/agents/` (an existing unmanaged file with that name is left alone).
+- Adds `.do-it/` to your global Git excludes file (`core.excludesFile`, or `~/.config/git/ignore` when unset), so task notes never show up in any repository.
+- Links `do-it.config` to `~/.config/do-it/config`, so reviewer model settings kept in this repo apply in every repository (an existing unmanaged file there is left alone).
 
 ### 2. `global-sync` (Skill Discovery & Adoption)
 
@@ -138,6 +142,28 @@ agent-stuff global-sync --delete <skill-name>
 ```
 
 When adopted, skills are moved into `.agents/skills/`, checked for valid YAML frontmatter, and automatically symlinked out to all supported harnesses.
+
+### 3. `chat` and `do-it` (Plan, Implement, Review, Learn)
+
+Two user-invoked skills for small daily tasks:
+
+1. `/chat <task>`: grills you about the task and writes `.do-it/<date>-<slug>/plan.md`. It stops once you approve.
+2. `/do-it .do-it/<date>-<slug>`: implements the plan test-first, then runs a review loop with a read-only reviewer sub-agent:
+   - Each finding is accepted, rejected with evidence, or (for minor ones) declined.
+   - A finding still disputed after two exchanges is escalated to you, and the loop stops after at most three rounds.
+   - When the loop ends, it writes `report.md`, which records the decisions, a tick-off checklist of every debate, and verified further-reading links.
+
+Nothing is committed. Everything stays in the Git-ignored `.do-it/` folder.
+
+Reviewer model, configured per harness. Set it in [`do-it.config`](do-it.config) in this repo; `install-custom-skills` links that file to `~/.config/do-it/config`, so one edit applies to every repository and every harness. An exported environment variable with the same name overrides the file for that shell.
+
+| Harness | Key | Values | Default |
+| --- | --- | --- | --- |
+| Copilot | `DO_IT_REVIEWER_MODEL_COPILOT` | any model ID | `gpt-5.3-codex` |
+| Claude Code | `DO_IT_REVIEWER_MODEL_CLAUDE` | `opus`, `sonnet`, `haiku`, `fable` | `opus` |
+| Antigravity | `DO_IT_REVIEWER_MODEL_ANTIGRAVITY` | `inherit`, `flash`, `pro` | `pro` |
+
+`DO_IT_REVIEWER_MODEL` is a generic fallback, used only when its value is valid for the current harness. Only Copilot can review with a different vendor's model.
 
 ---
 
@@ -170,4 +196,5 @@ Run the isolated test suites (tested with `/bin/bash` 3.2+ on macOS):
 bash test/install_test.sh
 bash test/adopt_test.sh
 bash test/cli_test.sh
+bash test/resolve_reviewer_model_test.sh
 ```

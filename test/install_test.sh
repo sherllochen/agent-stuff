@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+unset XDG_CONFIG_HOME GIT_CONFIG_GLOBAL
+export GIT_CONFIG_NOSYSTEM=1
+
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 sandbox=$(mktemp -d)
 trap 'rm -rf "$sandbox"' EXIT
@@ -57,6 +60,10 @@ printf '# Project A instructions\n' > "$source_root/project-a/AGENTS.md"
 printf '# Project A Claude extras\n' > "$source_root/project-a/CLAUDE.md"
 printf '# Project A Copilot extras\n' > "$source_root/project-a/.github/copilot-instructions.md"
 printf '%s\n' 'global skill' > "$source_root/.agents/skills/global-skill/SKILL.md"
+mkdir -p "$source_root/.agents/skills/do-it"
+printf '%s\n' '# do-it reviewer' 'Reviewer body line' \
+  > "$source_root/.agents/skills/do-it/reviewer-prompt.md"
+printf '%s\n' 'DO_IT_REVIEWER_MODEL_CLAUDE=sonnet' > "$source_root/do-it.config"
 printf '%s\n' 'project skill' > "$source_root/project-a/.agents/skills/project-skill/SKILL.md"
 printf '%s\n' 'keep me' > "$home_root/.agents/skills/third-party-skill/SKILL.md"
 printf '%s\n' 'replace me' > "$dev_root/project-a/AGENTS.md"
@@ -180,5 +187,41 @@ test "$(readlink "$dev_root/project-a/AGENTS.md")" = \
 test "$(readlink "$dev_root/project-b/AGENTS.md")" = \
   "$source_root/.generated/project-b/AGENTS.md"
 test ! -e "$dev_root/missing-project"
+
+# Claude reviewer agent is generated from the prompt and linked
+claude_agent="$home_root/.claude/agents/do-it-reviewer.md"
+test "$(readlink "$claude_agent")" = \
+  "$source_root/.generated/agents/claude/do-it-reviewer.md"
+grep -Fx 'name: do-it-reviewer' "$claude_agent"
+grep -Fx 'disallowedTools: Write, Edit' "$claude_agent"
+grep -Fx 'Reviewer body line' "$claude_agent"
+
+# Repo do-it.config is linked to the user-level config path read by the resolver
+test "$(readlink "$home_root/.config/do-it/config")" = "$source_root/do-it.config"
+
+# Without core.excludesFile, .do-it/ goes to the XDG default exactly once
+test "$(grep -Fxc '.do-it/' "$home_root/.config/git/ignore")" -eq 1
+
+# With core.excludesFile set (tilde form), existing entries are kept and no duplicates appear
+printf 'existing-entry' > "$home_root/.gitignore_global"
+HOME="$home_root" git config --global core.excludesFile '~/.gitignore_global'
+HOME="$home_root" DEV_ROOT="$dev_root" "$source_root/install.sh" > /dev/null
+HOME="$home_root" DEV_ROOT="$dev_root" "$source_root/install.sh" > /dev/null
+grep -Fx 'existing-entry' "$home_root/.gitignore_global"
+test "$(grep -Fxc '.do-it/' "$home_root/.gitignore_global")" -eq 1
+
+# An unmanaged agent file with the same name is never overwritten
+other_home="$sandbox/other-home"
+mkdir -p "$other_home/.claude/agents" "$other_home/.config/do-it"
+printf '%s\n' 'mine' > "$other_home/.claude/agents/do-it-reviewer.md"
+printf '%s\n' 'DO_IT_REVIEWER_MODEL_CLAUDE=haiku' > "$other_home/.config/do-it/config"
+HOME="$other_home" DEV_ROOT="$dev_root" "$source_root/install.sh" \
+  > "$sandbox/unmanaged.out" 2>&1
+test ! -L "$other_home/.claude/agents/do-it-reviewer.md"
+grep -Fx 'mine' "$other_home/.claude/agents/do-it-reviewer.md"
+grep -F "Skipping $other_home/.claude/agents/do-it-reviewer.md" "$sandbox/unmanaged.out"
+test ! -L "$other_home/.config/do-it/config"
+grep -Fx 'DO_IT_REVIEWER_MODEL_CLAUDE=haiku' "$other_home/.config/do-it/config"
+grep -F "Skipping $other_home/.config/do-it/config" "$sandbox/unmanaged.out"
 
 echo 'Installer tests passed'

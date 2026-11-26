@@ -1,0 +1,5 @@
+interface:
+  display_name: "Chat"
+  short_description: "Settle an approved, testable plan before do-it"
+policy:
+  allow_implicit_invocation: false

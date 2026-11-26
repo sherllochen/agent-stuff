@@ -1,0 +1,5 @@
+interface:
+  display_name: "Do It"
+  short_description: "Implement an approved plan with an evidence-based review loop"
+policy:
+  allow_implicit_invocation: false
